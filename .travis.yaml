@@ -1,6 +1,10 @@
 sudo: required
 services:
     - docker
+env:
+    global:
+        - SHA=$(git rev-parse HEAD)
+        - CLOUDSDK_CORE_DISABLE_PROMPTS=1
 before_install:
     - openssl aes-256-cbc -K $encrypted_9f3b5599b056_key -iv $encrypted_9f3b5599b056_iv -in service-account.json.enc -out service-account.json -d
     - curl https://sdk.cloud.google.com | bash > /dev/null;
@@ -9,4 +13,15 @@ before_install:
     - gcloud auth activate-service-account --key-file service-account.json
     - gcloud config set project ultra-welder-171717
     - gcloud config set compute/zone asia-southeast1-b
-    - gcloud container clusters get-credentials multi-k8s	
+    - gcloud container clusters get-credentials multi-k8s
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin	
+    - docker build -t $DOCKER_USERNAME/react-test -f ./client/Dockerfile.dev ./client 
+
+script:
+    - docker run -e CI=true $DOCKER_USERNAME/docker-react npm run test
+
+deploy:
+    provider: script
+    script: bash ./deploy.sh
+    on:
+        branch: master
